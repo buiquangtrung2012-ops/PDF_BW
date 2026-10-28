@@ -1,0 +1,5 @@
+# Giới hạn trên để tránh lần build sau tự kéo bản mới gây lỗi (như lỗi pymupdf.layout trước đây)
+PySide6>=6.6,<6.13
+pymupdf>=1.24,<3
+pillow>=10.0,<13
+numpy>=1.24,<3
