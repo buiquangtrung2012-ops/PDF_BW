@@ -1,6 +1,6 @@
 {
- "version": "2.2.2",
- "url": "PDF_BW_Studio_2.2.2.bwpatch",
- "notes": "Sửa triệt để lỗi màu chữ khi chuyển sang giao diện Sáng, menu dropdown và tối ưu Preview",
+ "version": "2.2.3",
+ "url": "PDF_BW_Studio_2.2.3.bwpatch",
+ "notes": "Nâng cấp giao diện nút chọn nổi bật dạng thẻ trắng viền sắc nét trên nền xám nhẹ, nút đang chọn màu xanh dương đậm nổi bật hoàn toàn",
  "requires_api": 1
 }
