@@ -223,25 +223,26 @@ def process_image(img: Image.Image, params: dict, scale: float = 1.0) -> Image.I
             radius = max(3, round(base_radius * s))
             blurred = pre.filter(ImageFilter.BoxBlur(radius=radius))
 
-            arr = np.array(pre, dtype=np.float32)
-            blur_arr = np.array(blurred, dtype=np.float32)
+            arr = np.asarray(pre, dtype=np.int16)
+            blur_arr = np.asarray(blurred, dtype=np.int16)
             thresh_offset = (threshold - 128) * 0.25
             # Sửa lỗi v1: khi độ lệch >= adaptive_c (ngưỡng >= 160), vùng nền phẳng cũng thỏa điều kiện
             # 'tối hơn trung bình cục bộ' nên toàn bộ nền giấy bị chuyển thành đen. Giới hạn để nền luôn trắng.
             thresh_offset = min(thresh_offset, adaptive_c - 1)
+            c_offset = int(round(adaptive_c - thresh_offset))
 
             if dark_mode in ("solid", "invert"):
                 macro_radius = max(round(20 * s), radius * 2)
-                macro_arr = np.array(pre.filter(ImageFilter.BoxBlur(radius=macro_radius)), dtype=np.float32)
+                macro_arr = np.asarray(pre.filter(ImageFilter.BoxBlur(radius=macro_radius)), dtype=np.int16)
 
                 is_dark_bg = (macro_arr < 115) & (blur_arr < 130)
-                res_arr = np.full_like(arr, 255, dtype=np.uint8)
+                res_arr = np.full(arr.shape, 255, dtype=np.uint8)
 
                 is_light_bg = ~is_dark_bg
-                diff_light = arr - (blur_arr - adaptive_c + thresh_offset)
+                diff_light = arr - (blur_arr - c_offset)
                 res_arr[is_light_bg & (diff_light <= 0)] = 0
 
-                is_white_text = is_dark_bg & ((arr >= blur_arr + 12 - thresh_offset * 0.5) | (arr > 160))
+                is_white_text = is_dark_bg & ((arr >= blur_arr + int(round(12 - thresh_offset * 0.5))) | (arr > 160))
 
                 if dark_mode == "solid":
                     res_arr[is_dark_bg] = 0
@@ -256,7 +257,7 @@ def process_image(img: Image.Image, params: dict, scale: float = 1.0) -> Image.I
 
                 result_img = Image.fromarray(res_arr, mode="L")
             else:
-                diff = arr - (blur_arr - adaptive_c + thresh_offset)
+                diff = arr - (blur_arr - c_offset)
                 result_img = Image.fromarray(np.where(diff <= 0, 0, 255).astype(np.uint8), mode="L")
         else:
             result_img = pre.point([0 if i < threshold else 255 for i in range(256)])

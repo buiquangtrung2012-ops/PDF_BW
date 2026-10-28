@@ -1,0 +1,6 @@
+keys/
+build/
+dist/
+installer_output/
+.venv/
+__pycache__/

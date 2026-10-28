@@ -1,6 +1,6 @@
 {
- "version": "2.2.0",
- "url": "PDF_BW_Studio_2.2.0.bwpatch",
- "notes": "test",
+ "version": "2.2.1",
+ "url": "PDF_BW_Studio_2.2.1.bwpatch",
+ "notes": "Tối ưu căn giữa và pan quanh tâm Preview, tăng tốc tải Preview, nâng cấp giao diện nút bấm nổi bật trên nền tối",
  "requires_api": 1
 }

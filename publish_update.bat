@@ -2,6 +2,7 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 where py >nul 2>&1 && (set "PY=py -3") || (set "PY=python")
+if exist .venv\Scripts\python.exe (set "PY=.venv\Scripts\python.exe")
 if not exist keys\update_private.key (
     echo [Lan dau] Tao cap khoa ky so cho ban cap nhat...
     %PY% tools\publish_update.py keygen

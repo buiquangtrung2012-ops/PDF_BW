@@ -174,12 +174,20 @@ PRESET_LABELS = [("darken", "Làm đậm chữ mờ"), ("clean_scan", "Tẩy tr�
 # Giao diện sáng / tối
 # ----------------------------------------------------------------------
 THEMES = {
-    "dark": dict(bg="#14161b", panel="#1b1e25", card="#242832", border="#323744", text="#e8eaf0",
-                 muted="#8b92a5", accent="#4f8cff", accent_text="#ffffff", view="#0e1014",
-                 hover="#2d3240", warn="#ff7b72"),
-    "light": dict(bg="#f1f3f7", panel="#ffffff", card="#eef1f6", border="#d5dae4", text="#1b1f2a",
-                  muted="#6a7285", accent="#2f6fe4", accent_text="#ffffff", view="#d9dde6",
-                  hover="#e3e8f1", warn="#c62828"),
+    "dark": dict(bg="#111318", panel="#171a22", card="#212634", border="#2e3547", text="#edf0f7",
+                 muted="#8e98ac", accent="#4f8cff", accent_text="#ffffff", view="#0c0e12",
+                 hover="#283042", warn="#ff6b6b",
+                 btn_bg="#2b3345", btn_border="#475370", btn_hover="#38435b", btn_hover_border="#627299",
+                 btn_pressed="#1f2533", btn_text="#ffffff", btn_active_bg="#1d3a68", btn_active_border="#4f8cff",
+                 primary_bg="#2e74e6", primary_border="#5a96f8", primary_hover="#3b82f6", primary_hover_border="#8bb9fe",
+                 primary_pressed="#1d5cc2"),
+    "light": dict(bg="#f1f3f7", panel="#ffffff", card="#f4f6fa", border="#d3d8e4", text="#1b1f2a",
+                  muted="#6a7285", accent="#2563eb", accent_text="#ffffff", view="#d9dde6",
+                  hover="#eef2f8", warn="#c62828",
+                  btn_bg="#ffffff", btn_border="#cbd2df", btn_hover="#f3f6fc", btn_hover_border="#93b4e8",
+                  btn_pressed="#e2e8f0", btn_text="#1b1f2a", btn_active_bg="#e8f0fe", btn_active_border="#2563eb",
+                  primary_bg="#2563eb", primary_border="#1d4ed8", primary_hover="#1d4ed8", primary_hover_border="#1e40af",
+                  primary_pressed="#1e40af"),
 }
 
 
@@ -196,51 +204,61 @@ def build_qss(c: dict) -> str:
     #subtitle {{ color: {c['muted']}; font-size: 11px; }}
     #warn {{ color: {c['warn']}; font-size: 12px; }}
     #sectionTitle {{ font-weight: 700; font-size: 12px; color: {c['muted']}; }}
-    #valBadge {{ background: {c['card']}; border: 1px solid {c['border']}; border-radius: 8px;
+    #valBadge {{ background: {c['card']}; border: 1px solid {c['btn_border']}; border-radius: 8px;
                 padding: 1px 8px; font-weight: 600; }}
-    QPushButton {{ background: {c['card']}; border: 1px solid {c['border']}; border-radius: 8px;
-                  padding: 7px 10px; }}
-    QPushButton:hover {{ background: {c['hover']}; }}
-    QPushButton:disabled {{ color: {c['muted']}; }}
-    QPushButton[preset="true"] {{ text-align: left; padding: 9px 10px; }}
+    QPushButton {{ background: {c['btn_bg']}; color: {c['btn_text']}; border: 1px solid {c['btn_border']};
+                  border-radius: 8px; padding: 7px 12px; font-weight: 600; }}
+    QPushButton:hover {{ background: {c['btn_hover']}; border: 1px solid {c['btn_hover_border']}; color: #ffffff; }}
+    QPushButton:pressed {{ background: {c['btn_pressed']}; border: 1px solid {c['accent']}; }}
+    QPushButton:disabled {{ background: {c['card']}; color: {c['muted']}; border: 1px solid {c['border']}; }}
+    QPushButton[preset="true"] {{ text-align: left; padding: 9px 12px; background: {c['btn_bg']};
+                                  border: 1px solid {c['btn_border']}; font-weight: 500; }}
+    QPushButton[preset="true"]:hover {{ background: {c['btn_hover']}; border: 1px solid {c['btn_hover_border']}; }}
     QPushButton[preset="true"]:checked, QPushButton[tab="true"]:checked, QPushButton[toggle="true"]:checked {{
-        border: 1px solid {c['accent']}; background: {c['hover']}; }}
+        border: 1.5px solid {c['btn_active_border']}; background: {c['btn_active_bg']}; color: #ffffff; font-weight: 700; }}
     QPushButton[tab="true"] {{ text-align: left; padding: 8px 12px; }}
-    QPushButton[seg="true"] {{ border-radius: 0; padding: 6px 4px; margin-left: -1px; }}
+    QPushButton[seg="true"] {{ border-radius: 0; padding: 6px 10px; margin-left: -1px;
+                              background: {c['btn_bg']}; border: 1px solid {c['btn_border']}; font-weight: 500; }}
+    QPushButton[seg="true"]:hover {{ background: {c['btn_hover']}; border: 1px solid {c['btn_hover_border']}; }}
     QPushButton[seg="true"]:checked {{ background: {c['accent']}; color: {c['accent_text']};
-                                      border: 1px solid {c['accent']}; }}
+                                      border: 1px solid {c['primary_border']}; font-weight: 700; }}
     QPushButton[segpos="first"] {{ border-top-left-radius: 8px; border-bottom-left-radius: 8px; margin-left: 0; }}
     QPushButton[segpos="last"] {{ border-top-right-radius: 8px; border-bottom-right-radius: 8px; }}
-    QPushButton#primary {{ background: {c['accent']}; color: {c['accent_text']}; border: none;
-                          font-weight: 700; font-size: 14px; padding: 11px; }}
-    QPushButton#primary:disabled {{ background: {c['card']}; color: {c['muted']}; }}
-    QPushButton#link {{ background: transparent; border: none; color: {c['accent']}; padding: 2px 4px; }}
+    QPushButton#primary {{ background: {c['primary_bg']}; color: {c['accent_text']};
+                          border: 1px solid {c['primary_border']}; border-radius: 8px;
+                          font-weight: 700; font-size: 14px; padding: 11px 16px; }}
+    QPushButton#primary:hover {{ background: {c['primary_hover']}; border: 1px solid {c['primary_hover_border']}; }}
+    QPushButton#primary:pressed {{ background: {c['primary_pressed']}; border: 1px solid {c['primary_border']}; }}
+    QPushButton#primary:disabled {{ background: {c['card']}; color: {c['muted']}; border: 1px solid {c['border']}; }}
+    QPushButton#link {{ background: transparent; border: none; color: {c['accent']}; padding: 2px 4px; font-weight: 600; }}
+    QPushButton#link:hover {{ color: #70a6ff; text-decoration: underline; }}
     QSlider::groove:horizontal {{ height: 6px; background: {c['card']}; border: 1px solid {c['border']};
                                  border-radius: 3px; }}
     QSlider::sub-page:horizontal {{ background: {c['accent']}; border-radius: 3px; }}
     QSlider::handle:horizontal {{ background: #ffffff; border: 2px solid {c['accent']};
                                  width: 14px; height: 14px; margin: -7px 0; border-radius: 9px; }}
-    QCheckBox {{ spacing: 8px; }}
-    QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {c['border']};
+    QCheckBox {{ spacing: 8px; font-weight: 500; }}
+    QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {c['btn_border']};
                            background: {c['card']}; }}
     QCheckBox::indicator:checked {{ background: {c['accent']}; border: 1px solid {c['accent']}; }}
-    QLineEdit, QComboBox, QPlainTextEdit {{ background: {c['card']}; border: 1px solid {c['border']};
+    QLineEdit, QComboBox, QPlainTextEdit {{ background: {c['card']}; border: 1px solid {c['btn_border']};
                                      border-radius: 8px; padding: 5px 8px; }}
+    QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {{ border: 1.5px solid {c['accent']}; }}
     QComboBox QAbstractItemView {{ background: {c['panel']}; selection-background-color: {c['accent']}; }}
-    QProgressBar {{ background: {c['card']}; border: 1px solid {c['border']}; border-radius: 6px;
+    QProgressBar {{ background: {c['card']}; border: 1px solid {c['btn_border']}; border-radius: 6px;
                    height: 10px; text-align: center; color: transparent; }}
     QProgressBar::chunk {{ background: {c['accent']}; border-radius: 5px; }}
     #viewerBar {{ background: {c['panel']}; border-bottom: 1px solid {c['border']}; }}
-    #dropZone {{ border: 2px dashed {c['border']}; border-radius: 16px; background: {c['panel']}; }}
+    #dropZone {{ border: 2px dashed {c['btn_border']}; border-radius: 16px; background: {c['panel']}; }}
     #footer {{ background: {c['panel']}; border-top: 1px solid {c['border']}; }}
     QListWidget {{ background: {c['panel']}; border: none; border-right: 1px solid {c['border']}; outline: 0; }}
-    QListWidget#fileList {{ background: {c['card']}; border: 1px solid {c['border']}; border-radius: 8px; }}
+    QListWidget#fileList {{ background: {c['card']}; border: 1px solid {c['btn_border']}; border-radius: 8px; }}
     QListWidget::item {{ border-radius: 8px; }}
     QListWidget::item:selected {{ background: {c['accent']}; color: {c['accent_text']}; }}
     QSplitter::handle {{ background: {c['border']}; }}
     QSplitter::handle:hover {{ background: {c['accent']}; }}
     QScrollBar:vertical {{ width: 10px; background: transparent; }}
-    QScrollBar::handle:vertical {{ background: {c['border']}; border-radius: 5px; min-height: 30px; }}
+    QScrollBar::handle:vertical {{ background: {c['btn_border']}; border-radius: 5px; min-height: 30px; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
     """
 
@@ -305,14 +323,31 @@ class PdfSession:
         if self.page_count == 0:
             self.doc.close()
             raise ValueError("File PDF không có trang nào.")
-        self.sizes = [(p.rect.width, p.rect.height) for p in self.doc]
+        self._sizes = {}
+
+    def get_size(self, page_num):
+        idx = max(0, min(self.page_count - 1, page_num - 1))
+        if idx not in self._sizes:
+            with self.lock:
+                if self.closed:
+                    raise SessionClosed()
+                p = self.doc[idx]
+                self._sizes[idx] = (p.rect.width, p.rect.height)
+        return self._sizes[idx]
+
+    @property
+    def sizes(self):
+        for i in range(self.page_count):
+            if i not in self._sizes:
+                self.get_size(i + 1)
+        return [self._sizes[i] for i in range(self.page_count)]
 
     def render(self, page_num, dpi):
         with self.lock:
             if self.closed:
                 raise SessionClosed()
             img = engine.render_page_to_pil(self.doc, page_num, dpi)
-        w, h = self.sizes[page_num - 1]
+        w, h = self.get_size(page_num)
         return img, w, h
 
     def close(self):
@@ -348,7 +383,10 @@ class PreviewTask(QRunnable):
                 return
             img, wpt, _ = entry
             proc = engine.process_image(img, self.params, engine.compute_scale(img.width, wpt))
-            sg.done.emit(self.sid, self.req_id, self.page, self.dpi, entry, proc)
+            # Chuyển đổi sang QImage ngay trong background thread để main thread vẽ tức thì
+            q_orig = pil_to_qimage(img)
+            q_proc = pil_to_qimage(proc)
+            sg.done.emit(self.sid, self.req_id, self.page, self.dpi, entry, (q_orig, q_proc))
         except SessionClosed:
             pass
         except Exception as e:  # noqa
@@ -362,6 +400,7 @@ class ThumbThread(QThread):
     def __init__(self, path, box=(112, 142)):
         super().__init__()
         self.path, self.box, self._stop = path, box, False
+        self.setPriority(QThread.LowPriority)
 
     def stop(self):
         self._stop = True
@@ -376,8 +415,30 @@ class ThumbThread(QThread):
                     r = page.rect
                     z = min(self.box[0] / r.width, self.box[1] / r.height) * 1.5
                     pix = page.get_pixmap(matrix=fitz.Matrix(z, z), alpha=False)
-                    qi = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format_RGB888).copy()
-                    self.thumb.emit(i + 1, qi)
+                    qi = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format_RGB888)
+
+                    # Dựng sẵn canvas thu nhỏ có số trang ngay trong luồng phụ
+                    canvas = QImage(THUMB_W, THUMB_H, QImage.Format_ARGB32_Premultiplied)
+                    canvas.fill(Qt.transparent)
+                    p = QPainter(canvas)
+                    p.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                    img = qi.scaled(THUMB_W - 4, THUMB_H - 4, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    x, y = (THUMB_W - img.width()) // 2, (THUMB_H - img.height()) // 2
+                    p.drawImage(x, y, img)
+                    p.setPen(QPen(QColor(120, 128, 145), 1))
+                    p.drawRect(x, y, img.width() - 1, img.height() - 1)
+                    label = str(i + 1)
+                    fm = p.fontMetrics()
+                    w, h = fm.horizontalAdvance(label) + 12, fm.height() + 2
+                    rf = QRectF((THUMB_W - w) / 2, THUMB_H - h - 3, w, h)
+                    p.setPen(Qt.NoPen)
+                    p.setBrush(QColor(0, 0, 0, 175))
+                    p.drawRoundedRect(rf, 7, 7)
+                    p.setPen(Qt.white)
+                    p.drawText(rf, Qt.AlignCenter, label)
+                    p.end()
+
+                    self.thumb.emit(i + 1, canvas)
         except Exception:
             logging.exception("Lỗi tạo ảnh thu nhỏ")
 
@@ -598,24 +659,84 @@ class CompareView(QWidget):
     def has_image(self):
         return self.orig is not None or self.proc is not None
 
-    def fit(self):
+    def _clamp_pan(self):
+        """Giới hạn vị trí Preview di chuyển quanh tâm, không để bị lệch tâm hay trôi mất."""
         if not self.has_image():
             return
-        iw, _ = self.logical
-        self.zoom = max(0.05, (self.width() - 2 * self.MARGIN) / iw)
-        self.ox = (self.width() - iw * self.zoom) / 2
-        self.oy = float(self.MARGIN)
+        lw, lh = self.logical
+        tw = lw * self.zoom
+        th = lh * self.zoom
+        vw = float(self.width())
+        vh = float(self.height())
+
+        # Chiều ngang: nếu ảnh nhỏ hơn hoặc bằng khung -> giữ đúng tâm Preview
+        if tw <= vw:
+            self.ox = (vw - tw) / 2.0
+        else:
+            # Nếu ảnh to hơn khung: cho phép di chuyển nhưng giới hạn quanh tâm Preview
+            min_x = vw - tw - self.MARGIN
+            max_x = float(self.MARGIN)
+            self.ox = min(max_x, max(min_x, self.ox))
+
+        # Chiều dọc: nếu ảnh thấp hơn hoặc bằng khung -> giữ đúng tâm Preview
+        if th <= vh:
+            self.oy = (vh - th) / 2.0
+        else:
+            # Nếu ảnh dài hơn khung: cho phép di chuyển nhưng giới hạn quanh tâm Preview
+            min_y = vh - th - self.MARGIN
+            max_y = float(self.MARGIN)
+            self.oy = min(max_y, max(min_y, self.oy))
+
+    def pan_by(self, dx, dy):
+        """Kéo di chuyển Preview: chỉ di chuyển quanh tâm khung xem."""
+        if not self.has_image():
+            return
+        lw, lh = self.logical
+        tw = lw * self.zoom
+        th = lh * self.zoom
+        vw = float(self.width())
+        vh = float(self.height())
+
+        if tw > vw:
+            min_x = vw - tw - self.MARGIN
+            max_x = float(self.MARGIN)
+            self.ox = min(max_x, max(min_x, self.ox + dx))
+        else:
+            self.ox = (vw - tw) / 2.0
+
+        if th > vh:
+            min_y = vh - th - self.MARGIN
+            max_y = float(self.MARGIN)
+            self.oy = min(max_y, max(min_y, self.oy + dy))
+        else:
+            self.oy = (vh - th) / 2.0
+
+        self.update()
+
+    def fit(self):
+        """Vừa vặn toàn bộ trang trong khung xem cả ngang lẫn dọc và căn đúng tâm Preview."""
+        if not self.has_image():
+            return
+        iw, ih = self.logical
+        vw = max(10.0, self.width() - 2 * self.MARGIN)
+        vh = max(10.0, self.height() - 2 * self.MARGIN)
+        self.zoom = max(0.05, min(vw / max(1.0, iw), vh / max(1.0, ih)))
+        self.ox = (self.width() - iw * self.zoom) / 2.0
+        self.oy = (self.height() - ih * self.zoom) / 2.0
         self.fit_mode = True
         self.zoom_changed.emit(self.zoom)
         self.update()
 
     def one_to_one(self):
+        """Tỉ lệ 1:1 và căn đều quanh tâm Preview."""
         if not self.has_image():
             return
         self.fit_mode = False
         self.zoom = 1.0
-        self.ox = (self.width() - self.logical[0]) / 2
-        self.oy = float(self.MARGIN)
+        iw, ih = self.logical
+        self.ox = (self.width() - iw) / 2.0
+        self.oy = (self.height() - ih) / 2.0
+        self._clamp_pan()
         self.zoom_changed.emit(self.zoom)
         self.update()
 
@@ -624,12 +745,13 @@ class CompareView(QWidget):
         if not self.has_image():
             return
         self.fit_mode = False
-        c = center or QPointF(self.width() / 2, self.height() / 2)
+        c = center or QPointF(self.width() / 2.0, self.height() / 2.0)
         new = min(8.0, max(0.05, self.zoom * factor))
         k = new / self.zoom
         self.ox = c.x() - (c.x() - self.ox) * k
         self.oy = c.y() - (c.y() - self.oy) * k
         self.zoom = new
+        self._clamp_pan()
         self.zoom_changed.emit(self.zoom)
         self.update()
 
@@ -709,11 +831,9 @@ class CompareView(QWidget):
             self.update()
         elif self._drag == "pan":
             d = pos - self._last
-            self.ox += d.x()
-            self.oy += d.y()
             self._last = pos
             self.fit_mode = False
-            self.update()
+            self.pan_by(d.x(), d.y())
         else:
             self.setCursor(Qt.SizeHorCursor if self._near_divider(pos.x()) else Qt.OpenHandCursor)
 
@@ -731,10 +851,11 @@ class CompareView(QWidget):
             return
         old = e.oldSize()
         if old.width() > 0 and old.height() > 0 and self.zoom > 0:
-            px = (old.width() / 2 - self.ox) / self.zoom
-            py = (old.height() / 2 - self.oy) / self.zoom
-            self.ox = self.width() / 2 - px * self.zoom
-            self.oy = self.height() / 2 - py * self.zoom
+            px = (old.width() / 2.0 - self.ox) / self.zoom
+            py = (old.height() / 2.0 - self.oy) / self.zoom
+            self.ox = self.width() / 2.0 - px * self.zoom
+            self.oy = self.height() / 2.0 - py * self.zoom
+            self._clamp_pan()
             self.update()
 
     def wheelEvent(self, e):
@@ -1297,7 +1418,7 @@ class MainWindow(QMainWindow):
         b_in.setFixedWidth(36)
         b_in.clicked.connect(lambda: self.view.zoom_by(1.25))
         b_fit = QPushButton("Vừa")
-        b_fit.setToolTip("Vừa chiều rộng")
+        b_fit.setToolTip("Vừa khung nhìn (cả chiều rộng và cao)")
         b_fit.clicked.connect(lambda: self.view.fit())
         b_one = QPushButton("1:1")
         b_one.clicked.connect(lambda: self.view.one_to_one())
@@ -1519,11 +1640,17 @@ class MainWindow(QMainWindow):
             self.thumbs.addItem(it)
         self.thumbs.setCurrentRow(0)
         self.thumbs.blockSignals(False)
-        self.thumb_thread = ThumbThread(path)
+
+        # Ưu tiên hiển thị Preview trang đầu trước, tạo ảnh thu nhỏ sau 150ms để không nghẽn CPU
+        QTimer.singleShot(150, self._start_thumbs)
+        self.schedule_preview(delay=0)
+
+    def _start_thumbs(self):
+        if not self.session or self.thumb_thread:
+            return
+        self.thumb_thread = ThumbThread(self.pdf_path)
         self.thumb_thread.thumb.connect(self.on_thumb)
         self.thumb_thread.start()
-
-        self.schedule_preview(delay=0)
 
     def _stop_thumbs(self):
         t = self.thumb_thread
@@ -1536,29 +1663,10 @@ class MainWindow(QMainWindow):
             t.wait(5000)
             self.thumb_thread = None
 
-    def on_thumb(self, page, qi):
+    def on_thumb(self, page, canvas):
         it = self.thumbs.item(page - 1)
         if not it:
             return
-        canvas = QImage(THUMB_W, THUMB_H, QImage.Format_ARGB32_Premultiplied)
-        canvas.fill(Qt.transparent)
-        p = QPainter(canvas)
-        p.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        img = qi.scaled(THUMB_W - 4, THUMB_H - 4, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        x, y = (THUMB_W - img.width()) // 2, (THUMB_H - img.height()) // 2
-        p.drawImage(x, y, img)
-        p.setPen(QPen(QColor(120, 128, 145), 1))
-        p.drawRect(x, y, img.width() - 1, img.height() - 1)
-        label = str(page)
-        fm = p.fontMetrics()
-        w, h = fm.horizontalAdvance(label) + 12, fm.height() + 2
-        r = QRectF((THUMB_W - w) / 2, THUMB_H - h - 3, w, h)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(0, 0, 0, 175))
-        p.drawRoundedRect(r, 7, 7)
-        p.setPen(Qt.white)
-        p.drawText(r, Qt.AlignCenter, label)
-        p.end()
         it.setText("")
         it.setIcon(QIcon(QPixmap.fromImage(canvas)))
 
@@ -1593,11 +1701,18 @@ class MainWindow(QMainWindow):
     def current_preview_dpi(self):
         if self.fast:
             return FAST_DPI
-        needed = engine.REF_DPI * self.view.zoom * self.devicePixelRatioF()
-        dpi = 140 if needed <= 170 else 200 if needed <= 240 else 300
-        w, h = self.session.sizes[self.page - 1]
-        while dpi > 140 and w * h * (dpi / 72.0) ** 2 > 45e6:      # trang khổ lớn: không đẩy DPI quá cao
-            dpi = 200 if dpi == 300 else 140
+        w_pt, h_pt = self.session.get_size(self.page)
+        if self._refit or not self.view.has_image():
+            vw = max(100.0, self.view.width() - 2 * self.view.MARGIN)
+            vh = max(100.0, self.view.height() - 2 * self.view.MARGIN)
+            fit_zoom = min(vw / max(1.0, w_pt * engine.REF_DPI / 72.0),
+                           vh / max(1.0, h_pt * engine.REF_DPI / 72.0))
+            needed = engine.REF_DPI * fit_zoom * self.devicePixelRatioF()
+        else:
+            needed = engine.REF_DPI * self.view.zoom * self.devicePixelRatioF()
+        dpi = 100 if needed <= 120 else 140 if needed <= 170 else 200 if needed <= 240 else 300
+        while dpi > 140 and w_pt * h_pt * (dpi / 72.0) ** 2 > 35e6:      # trang khổ lớn: không đẩy DPI quá cao
+            dpi = 140
         return dpi
 
     def schedule_preview(self, delay=None):
@@ -1630,12 +1745,13 @@ class MainWindow(QMainWindow):
         self.cache_put((page, dpi), entry)
         if proc is None or req_id != self.req_id or page != self.page:
             return
-        img, wpt, hpt = entry
+        q_orig, q_proc = proc
+        _, wpt, hpt = entry
         refit, self._refit = self._refit, False
         self.shown_dpi = dpi
         self.view.busy = False
         k = engine.REF_DPI / 72.0
-        self.view.set_images(pil_to_qimage(img), pil_to_qimage(proc), (wpt * k, hpt * k), refit=refit)
+        self.view.set_images(q_orig, q_proc, (wpt * k, hpt * k), refit=refit)
 
     def on_preview_failed(self, sid, req_id, msg):
         if sid == self.sid and req_id == self.req_id:
