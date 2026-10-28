@@ -1,6 +1,6 @@
 {
- "version": "2.2.1",
- "url": "PDF_BW_Studio_2.2.1.bwpatch",
- "notes": "Tối ưu Preview tâm khung, tăng tốc tải Preview, nâng cấp giao diện nút bấm nổi bật, sửa lỗi hiển thị chữ màu trắng trên nền sáng",
+ "version": "2.2.2",
+ "url": "PDF_BW_Studio_2.2.2.bwpatch",
+ "notes": "Sửa triệt để lỗi màu chữ khi chuyển sang giao diện Sáng, menu dropdown và tối ưu Preview",
  "requires_api": 1
 }
