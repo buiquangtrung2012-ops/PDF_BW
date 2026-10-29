@@ -1,6 +1,6 @@
 {
- "version": "2.2.3",
- "url": "PDF_BW_Studio_2.2.3.bwpatch",
- "notes": "Nâng cấp giao diện nút chọn nổi bật dạng thẻ trắng viền sắc nét trên nền xám nhẹ, nút đang chọn màu xanh dương đậm nổi bật hoàn toàn",
+ "version": "2.2.4",
+ "url": "PDF_BW_Studio_2.2.4.bwpatch",
+ "notes": "Them tinh nang in truc tiep PDF den trang va tuy chinh quy uoc dat ten file xuat (ca xu ly hang loat)",
  "requires_api": 1
 }

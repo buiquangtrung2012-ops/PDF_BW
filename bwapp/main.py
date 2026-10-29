@@ -24,7 +24,7 @@ for _m in ("pymupdf.layout", "pymupdf4llm"):
 from PIL import Image
 from PySide6.QtCore import (
     Qt, QTimer, QThread, Signal, QObject, QRunnable, QThreadPool,
-    QRectF, QPointF, QSettings, QUrl, QSize,
+    QRectF, QPointF, QSettings, QUrl, QSize, QRect,
 )
 from PySide6.QtGui import (
     QImage, QPainter, QColor, QPen, QIcon, QDesktopServices, QKeySequence,
@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QButtonGroup, QSizePolicy, QListWidget, QListWidgetItem, QListView,
     QDialog, QPlainTextEdit, QInputDialog,
 )
+from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 import pymupdf as fitz
 
 from . import engine
@@ -182,12 +183,12 @@ THEMES = {
                  btn_active_bg="#2563eb", btn_active_border="#60a5fa", btn_active_text="#ffffff",
                  primary_bg="#2563eb", primary_border="#60a5fa", primary_hover="#1d4ed8", primary_hover_border="#93c5fd",
                  primary_pressed="#1e40af"),
-    "light": dict(bg="#e8ecf2", panel="#f0f3f8", card="#ffffff", border="#cbd3e1", text="#111827",
-                  muted="#606d84", accent="#2563eb", accent_text="#ffffff", view="#d9dde6",
-                  hover="#e2e7f0", warn="#c62828",
-                  btn_bg="#ffffff", btn_border="#bcc7d7", btn_hover="#e9edf5", btn_hover_border="#7b93b8",
-                  btn_hover_text="#111827", btn_pressed="#dbe1ec", btn_text="#111827",
-                  btn_active_bg="#2563eb", btn_active_border="#1d4ed8", btn_active_text="#ffffff",
+    "light": dict(bg="#e2e8f0", panel="#f8fafc", card="#ffffff", border="#cbd5e1", text="#0f172a",
+                  muted="#475569", accent="#2563eb", accent_text="#ffffff", view="#d9dde6",
+                  hover="#e2e8f0", warn="#dc2626",
+                  btn_bg="#ffffff", btn_border="#94a3b8", btn_hover="#f1f5f9", btn_hover_border="#334155",
+                  btn_hover_text="#0f172a", btn_pressed="#e2e8f0", btn_text="#0f172a",
+                  btn_active_bg="#1d4ed8", btn_active_border="#1e40af", btn_active_text="#ffffff",
                   primary_bg="#2563eb", primary_border="#1d4ed8", primary_hover="#1d4ed8", primary_hover_border="#1e40af",
                   primary_pressed="#1e40af"),
 }
@@ -234,6 +235,12 @@ def build_qss(c: dict) -> str:
     QPushButton#primary:hover {{ background: {c['primary_hover']}; border: 1.5px solid {c['primary_hover_border']}; }}
     QPushButton#primary:pressed {{ background: {c['primary_pressed']}; border: 1.5px solid {c['primary_border']}; }}
     QPushButton#primary:disabled {{ background: {c['panel']}; color: {c['muted']}; border: 1px solid {c['border']}; }}
+    QPushButton#secondary {{ background: {c['card']}; color: {c['text']};
+                            border: 1.5px solid {c['btn_border']}; border-radius: 8px;
+                            font-weight: 700; font-size: 13px; padding: 11px 14px; }}
+    QPushButton#secondary:hover {{ background: {c['btn_hover']}; border: 1.5px solid {c['accent']}; color: {c['accent']}; }}
+    QPushButton#secondary:pressed {{ background: {c['btn_pressed']}; border: 1.5px solid {c['primary_border']}; }}
+    QPushButton#secondary:disabled {{ background: {c['panel']}; color: {c['muted']}; border: 1px solid {c['border']}; }}
     QPushButton#link {{ background: transparent; border: none; color: {c['accent']}; padding: 2px 4px; font-weight: 600; }}
     QPushButton#link:hover {{ color: #70a6ff; text-decoration: underline; }}
     QMenu {{ background: {c['panel']}; color: {c['text']}; border: 1px solid {c['btn_border']}; border-radius: 8px; padding: 5px; }}
@@ -301,10 +308,30 @@ def check_range(text: str, total: int):
     return sorted(pages), bool(pages)
 
 
-def unique_path(folder: str, base: str, used: set) -> str:
+def format_output_name(template: str, base_name: str, mode: str = "", dpi: int = 300) -> str:
+    """Định dạng tên file xuất theo quy ước người dùng cấu hình."""
+    from datetime import datetime
+    today = datetime.now().strftime("%Y%m%d")
+    mode_map = {"binarize": "scan", "grayscale": "gray", "dither": "dither"}
+    m = mode_map.get(mode, mode or "bw")
+    t = (template or "").strip()
+    if not t:
+        t = "{name}_bw"
+    # Thay thế các biến đại diện
+    name = t.replace("{name}", base_name)\
+            .replace("{mode}", m)\
+            .replace("{date}", today)\
+            .replace("{dpi}", str(dpi))
+    # Loại bỏ ký tự cấm trong tên file Windows
+    name = re.sub(r'[\\/*?:"<>|]', '_', name).strip()
+    return name if name else f"{base_name}_bw"
+
+
+def unique_path(folder: str, base: str, used: set, template: str = "{name}_bw", mode: str = "", dpi: int = 300) -> str:
+    clean_base = format_output_name(template, base, mode, dpi)
     n = 1
     while True:
-        name = f"{base}_bw.pdf" if n == 1 else f"{base}_bw_{n}.pdf"
+        name = f"{clean_base}.pdf" if n == 1 else f"{clean_base}_{n}.pdf"
         p = os.path.join(folder, name)
         if p not in used and not os.path.exists(p):
             used.add(p)
@@ -520,6 +547,101 @@ class BatchThread(QThread):
                 fail += 1
                 self.file_done.emit(i, False, friendly_error(e))
         self.finished_all.emit(ok, fail, cancelled)
+
+
+class PrintThread(QThread):
+    progress = Signal(int, int)
+    finished_ok = Signal(int, str)
+    failed = Signal(str)
+    cancelled = Signal()
+
+    def __init__(self, src: str, printer: QPrinter, params: dict | None, pages: list, dpi: int = 300, copies: int = 1):
+        super().__init__()
+        self.src = src
+        self.printer = printer
+        self.params = dict(params) if params is not None else None
+        self.pages = list(pages)
+        self.dpi = dpi
+        self.copies = max(1, copies)
+        self._cancel = threading.Event()
+
+    def cancel(self):
+        self._cancel.set()
+
+    def run(self):
+        try:
+            p_name = self.printer.printerName() or "Máy in"
+            logging.info("Bắt đầu in: %s -> %s (%d trang x %d bản)",
+                         self.src, p_name, len(self.pages), self.copies)
+            doc = fitz.open(self.src)
+            painter = QPainter()
+            if not painter.begin(self.printer):
+                self.failed.emit("Không thể khởi tạo phiên in với máy in đã chọn. Hãy kiểm tra kết nối máy in.")
+                doc.close()
+                return
+
+            try:
+                printer_res = self.printer.resolution()
+                render_dpi = max(150, min(300, self.dpi or 300))
+                total_ops = len(self.pages) * self.copies
+                cur_op = 0
+
+                for c_idx in range(self.copies):
+                    for idx_in_job, p_num in enumerate(self.pages):
+                        if self._cancel.is_set():
+                            painter.end()
+                            doc.close()
+                            self.cancelled.emit()
+                            return
+
+                        if c_idx > 0 or idx_in_job > 0:
+                            if not self.printer.newPage():
+                                self.failed.emit("Không thể tạo trang in mới (máy in báo lỗi).")
+                                painter.end()
+                                doc.close()
+                                return
+
+                        rect = doc[p_num - 1].rect
+                        img = engine.render_page_to_pil(doc, p_num, dpi=render_dpi)
+                        if self.params is not None:
+                            scale = engine.compute_scale(img.width, rect.width)
+                            proc = engine.process_image(img, self.params, scale)
+                            del img
+                            qimg = pil_to_qimage(proc)
+                            del proc
+                        else:
+                            qimg = pil_to_qimage(img)
+                            del img
+
+                        paint_rect = self.printer.pageLayout().paintRectPixels(printer_res)
+                        pw = max(1, paint_rect.width())
+                        ph = max(1, paint_rect.height())
+                        iw = max(1, qimg.width())
+                        ih = max(1, qimg.height())
+
+                        fit_scale = min(pw / iw, ph / ih)
+                        dw = int(iw * fit_scale)
+                        dh = int(ih * fit_scale)
+                        dx = paint_rect.x() + (pw - dw) // 2
+                        dy = paint_rect.y() + (ph - dh) // 2
+
+                        painter.drawImage(QRect(dx, dy, dw, dh), qimg)
+                        del qimg
+
+                        cur_op += 1
+                        self.progress.emit(cur_op, total_ops)
+            finally:
+                painter.end()
+                doc.close()
+
+            if self._cancel.is_set():
+                self.cancelled.emit()
+            else:
+                logging.info("Hoàn tất in: đã gửi %d trang tới %s", len(self.pages) * self.copies, p_name)
+                self.finished_ok.emit(len(self.pages) * self.copies, p_name)
+        except Exception as e:
+            logging.exception("In thất bại")
+            self.failed.emit(friendly_error(e))
 
 
 # ----------------------------------------------------------------------
@@ -908,7 +1030,7 @@ class BatchDialog(QDialog):
         row.addStretch()
         lay.addLayout(row)
 
-        self.chk_same = QCheckBox("Lưu kết quả cạnh file gốc (tên thêm hậu tố _bw)")
+        self.chk_same = QCheckBox("Lưu kết quả cạnh file gốc")
         self.chk_same.setChecked(True)
         self.chk_same.toggled.connect(self._toggle_out)
         lay.addWidget(self.chk_same)
@@ -921,6 +1043,15 @@ class BatchDialog(QDialog):
         orow.addWidget(self.btn_out)
         lay.addLayout(orow)
         self._toggle_out(True)
+
+        prow = QHBoxLayout()
+        prow.addWidget(QLabel("Quy ước đặt tên file:"))
+        initial_pat = self.parent().get_name_pattern() if hasattr(self.parent(), "get_name_pattern") else "{name}_bw"
+        self.ed_pattern = QLineEdit(initial_pat)
+        self.ed_pattern.setPlaceholderText("{name}_bw")
+        self.ed_pattern.setToolTip("Quy ước tên file xuất hàng loạt.\nBiến hỗ trợ: {name} (tên gốc), {mode} (chế độ: scan/gray/dither), {date} (ngày), {dpi} (DPI)")
+        prow.addWidget(self.ed_pattern, 1)
+        lay.addLayout(prow)
 
         self.progress = QProgressBar()
         self.progress.setRange(0, 1000)
@@ -976,14 +1107,17 @@ class BatchDialog(QDialog):
         if not same and not os.path.isdir(out_dir):
             QMessageBox.warning(self, APP_NAME, "Hãy chọn thư mục lưu kết quả hợp lệ.")
             return
+        pat = self.ed_pattern.text().strip() or "{name}_bw"
+        if hasattr(self.parent(), "set_name_pattern"):
+            self.parent().set_name_pattern(pat)
         used, jobs = set(), []
         for i in range(n):
             src = self.list.item(i).data(Qt.UserRole)
             folder = os.path.dirname(src) if same else out_dir
             base = os.path.splitext(os.path.basename(src))[0]
-            jobs.append((src, unique_path(folder, base, used)))
+            jobs.append((src, unique_path(folder, base, used, template=pat, mode=self.params.get("mode", ""), dpi=self.dpi)))
         self.n_jobs = n
-        for w in (self.btn_add, self.btn_rm, self.chk_same, self.ed_out, self.btn_out, self.btn_start, self.list):
+        for w in (self.btn_add, self.btn_rm, self.chk_same, self.ed_pattern, self.ed_out, self.btn_out, self.btn_start, self.list):
             w.setEnabled(False)
         self.btn_close.setText("Hủy")
         self.log.clear()
@@ -1049,6 +1183,7 @@ class MainWindow(QMainWindow):
         self.shown_dpi = 0
         self._refit = False
         self.convert_thread = None
+        self.print_thread = None
         self.thumb_thread = None
         self.export_pages = []
 
@@ -1078,6 +1213,7 @@ class MainWindow(QMainWindow):
         self.sidebar_wrap.setVisible(self.btn_panel.isChecked())
 
         QShortcut(QKeySequence.Open, self, activated=self.browse)
+        QShortcut(QKeySequence("Ctrl+P"), self, activated=self.start_print)
         QShortcut(QKeySequence(Qt.Key_PageUp), self, activated=lambda: self.change_page(self.page - 1))
         QShortcut(QKeySequence(Qt.Key_PageDown), self, activated=lambda: self.change_page(self.page + 1))
 
@@ -1310,19 +1446,40 @@ class MainWindow(QMainWindow):
         row.addLayout(col2, 1)
         pl.addLayout(row)
 
+        nrow = QHBoxLayout()
+        nl = QVBoxLayout()
+        nl.setSpacing(2)
+        nl.addWidget(QLabel("Quy ước đặt tên file:"))
+        self.ed_name_pattern = QLineEdit(self.get_name_pattern())
+        self.ed_name_pattern.setPlaceholderText("{name}_bw")
+        self.ed_name_pattern.setToolTip("Quy ước đặt tên file xuất.\nBiến hỗ trợ: {name} (tên gốc), {mode} (chế độ: scan/gray/dither), {date} (ngày), {dpi} (DPI)")
+        self.ed_name_pattern.textChanged.connect(self.on_name_pattern_changed)
+        nl.addWidget(self.ed_name_pattern)
+        nrow.addLayout(nl)
+        pl.addLayout(nrow)
+
         self.lbl_export = QLabel("")
         self.lbl_export.setObjectName("subtitle")
         pl.addWidget(self.lbl_export)
 
         brow = QHBoxLayout()
+        brow.setSpacing(8)
         self.btn_convert = QPushButton("Chuyển đổi và lưu PDF")
         self.btn_convert.setObjectName("primary")
         self.btn_convert.setEnabled(False)
         self.btn_convert.clicked.connect(self.start_convert)
+
+        self.btn_print = QPushButton("🖨 In trực tiếp…")
+        self.btn_print.setObjectName("secondary")
+        self.btn_print.setToolTip("In trực tiếp tài liệu đen trắng ra máy in (Ctrl+P)")
+        self.btn_print.setEnabled(False)
+        self.btn_print.clicked.connect(self.start_print)
+
         self.btn_cancel = QPushButton("Hủy")
-        self.btn_cancel.clicked.connect(self.cancel_convert)
+        self.btn_cancel.clicked.connect(self.cancel_active_job)
         self.btn_cancel.hide()
-        brow.addWidget(self.btn_convert, 1)
+        brow.addWidget(self.btn_convert, 3)
+        brow.addWidget(self.btn_print, 2)
         brow.addWidget(self.btn_cancel)
         pl.addLayout(brow)
 
@@ -1777,11 +1934,26 @@ class MainWindow(QMainWindow):
         if self.session and not self.fast and self.view.has_image() and self.current_preview_dpi() != self.shown_dpi:
             self.schedule_preview(delay=0)
 
-    # ---------------- Chuyển đổi ----------------
+    # ---------------- Quản lý đặt tên file ----------------
+    def get_name_pattern(self) -> str:
+        return self.settings.value("name_pattern", "{name}_bw")
+
+    def set_name_pattern(self, pattern: str):
+        p = (pattern or "").strip() or "{name}_bw"
+        self.settings.setValue("name_pattern", p)
+        if hasattr(self, "ed_name_pattern") and self.ed_name_pattern.text() != p:
+            self.ed_name_pattern.setText(p)
+
+    def on_name_pattern_changed(self, text: str):
+        p = text.strip() or "{name}_bw"
+        self.settings.setValue("name_pattern", p)
+
+    # ---------------- Chuyển đổi và In ấn ----------------
     def update_export_state(self):
         if not self.session:
             self.lbl_export.setText("")
             self.btn_convert.setEnabled(False)
+            self.btn_print.setEnabled(False)
             return
         pages, ok = check_range(self.ed_range.text(), self.total_pages)
         self.export_pages = pages
@@ -1789,15 +1961,18 @@ class MainWindow(QMainWindow):
         self.lbl_export.setStyleSheet("")      # buộc áp lại style theo objectName mới
         self.lbl_export.style().unpolish(self.lbl_export)
         self.lbl_export.style().polish(self.lbl_export)
-        self.lbl_export.setText(f"Sẽ xuất {len(pages)} / {self.total_pages} trang" if ok
+        self.lbl_export.setText(f"Sẽ xuất / in {len(pages)} / {self.total_pages} trang" if ok
                                 else "Dải trang không hợp lệ. Ví dụ: all hoặc 1-3, 5, 8-10")
-        self.btn_convert.setEnabled(ok and self.convert_thread is None)
+        is_idle = (self.convert_thread is None and self.print_thread is None)
+        self.btn_convert.setEnabled(ok and is_idle)
+        self.btn_print.setEnabled(ok and is_idle)
 
     def start_convert(self):
-        if not self.session or self.convert_thread or not self.export_pages:
+        if not self.session or self.convert_thread or self.print_thread or not self.export_pages:
             return
         base = os.path.splitext(os.path.basename(self.pdf_path))[0]
-        default = os.path.join(os.path.dirname(self.pdf_path), f"{base}_bw.pdf")
+        out_base = format_output_name(self.get_name_pattern(), base, self.params.get("mode", ""), self.cb_dpi.currentData())
+        default = os.path.join(os.path.dirname(self.pdf_path), f"{out_base}.pdf")
         dst, _ = QFileDialog.getSaveFileName(self, "Lưu file PDF đen trắng", default, "PDF (*.pdf)")
         if not dst:
             return
@@ -1808,6 +1983,7 @@ class MainWindow(QMainWindow):
             return
         self.persist_params()
         self.btn_convert.setEnabled(False)
+        self.btn_print.setEnabled(False)
         self.btn_cancel.setEnabled(True)
         self.btn_cancel.show()
         self.progress.setValue(0)
@@ -1822,18 +1998,147 @@ class MainWindow(QMainWindow):
         self.convert_thread = t
         t.start()
 
-    def cancel_convert(self):
+    def start_print(self):
+        if not self.session or not self.export_pages:
+            QMessageBox.information(self, APP_NAME, "Hãy mở một file PDF trước khi in.")
+            return
+        if self.convert_thread or self.print_thread:
+            QMessageBox.warning(self, APP_NAME, "Đang có tiến trình chuyển đổi hoặc in ấn đang chạy. Vui lòng đợi.")
+            return
+
+        printer = QPrinter(QPrinter.HighResolution)
+        base_name = os.path.splitext(os.path.basename(self.pdf_path))[0]
+        printer.setDocName(f"{base_name} (Đen Trắng)")
+
+        dlg = QPrintDialog(printer, self)
+        dlg.setWindowTitle("In trực tiếp PDF Đen Trắng")
+        dlg.setMinMax(1, self.total_pages)
+        dlg.setFromTo(1, self.total_pages)
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        pr = dlg.printRange()
+        if pr == QPrintDialog.CurrentPage:
+            targets = [self.page]
+        elif pr == QPrintDialog.PageRange:
+            f = max(1, printer.fromPage())
+            t = min(self.total_pages, printer.toPage())
+            targets = list(range(f, t + 1))
+        else:
+            targets = list(self.export_pages)
+
+        if not targets:
+            QMessageBox.warning(self, APP_NAME, "Không có trang nào hợp lệ để in.")
+            return
+
+        copies = max(1, printer.copyCount())
+        self.persist_params()
+        self.btn_convert.setEnabled(False)
+        self.btn_print.setEnabled(False)
+        self.btn_cancel.setEnabled(True)
+        self.btn_cancel.show()
+        self.progress.setValue(0)
+        self.progress.show()
+        self.lbl_progress.setText(f"Đang chuẩn bị in {len(targets) * copies} trang…")
+        self.lbl_progress.show()
+
+        t = PrintThread(self.pdf_path, printer, dict(self.params), targets,
+                        dpi=self.cb_dpi.currentData(), copies=copies)
+        t.progress.connect(self.on_print_progress)
+        t.finished_ok.connect(self.on_print_ok)
+        t.failed.connect(self.on_print_failed)
+        t.cancelled.connect(self.on_print_cancelled)
+        self.print_thread = t
+        t.start()
+
+    def print_pdf_file(self, file_path: str):
+        if not os.path.isfile(file_path):
+            return
+        if self.convert_thread or self.print_thread:
+            QMessageBox.warning(self, APP_NAME, "Đang có tiến trình chuyển đổi hoặc in ấn đang chạy. Vui lòng đợi.")
+            return
+
+        try:
+            doc = fitz.open(file_path)
+            total = len(doc)
+            doc.close()
+        except Exception as e:
+            QMessageBox.critical(self, APP_NAME, f"Không thể đọc file để in:\n{e}")
+            return
+
+        printer = QPrinter(QPrinter.HighResolution)
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        printer.setDocName(base_name)
+
+        dlg = QPrintDialog(printer, self)
+        dlg.setWindowTitle("In file PDF đã chuyển đổi")
+        dlg.setMinMax(1, total)
+        dlg.setFromTo(1, total)
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        pr = dlg.printRange()
+        if pr == QPrintDialog.CurrentPage:
+            targets = [1]
+        elif pr == QPrintDialog.PageRange:
+            f = max(1, printer.fromPage())
+            t = min(total, printer.toPage())
+            targets = list(range(f, t + 1))
+        else:
+            targets = list(range(1, total + 1))
+
+        if not targets:
+            QMessageBox.warning(self, APP_NAME, "Không có trang nào hợp lệ để in.")
+            return
+
+        copies = max(1, printer.copyCount())
+        self.btn_convert.setEnabled(False)
+        self.btn_print.setEnabled(False)
+        self.btn_cancel.setEnabled(True)
+        self.btn_cancel.show()
+        self.progress.setValue(0)
+        self.progress.show()
+        self.lbl_progress.setText(f"Đang chuẩn bị in {len(targets) * copies} trang…")
+        self.lbl_progress.show()
+
+        t = PrintThread(file_path, printer, None, targets, dpi=300, copies=copies)
+        t.progress.connect(self.on_print_progress)
+        t.finished_ok.connect(self.on_print_ok)
+        t.failed.connect(self.on_print_failed)
+        t.cancelled.connect(self.on_print_cancelled)
+        self.print_thread = t
+        t.start()
+
+    def cancel_active_job(self):
         if self.convert_thread:
             self.convert_thread.cancel()
-            self.btn_cancel.setEnabled(False)
-            self.lbl_progress.setText("Đang hủy…")
+        if self.print_thread:
+            self.print_thread.cancel()
+        self.btn_cancel.setEnabled(False)
+        self.lbl_progress.setText("Đang hủy…")
+
+    def cancel_convert(self):
+        self.cancel_active_job()
 
     def on_progress(self, cur, total):
         self.progress.setValue(int(cur * 100 / max(1, total)))
         self.lbl_progress.setText(f"Đang xử lý {cur}/{total} trang…")
 
+    def on_print_progress(self, cur, total):
+        self.progress.setValue(int(cur * 100 / max(1, total)))
+        self.lbl_progress.setText(f"Đang gửi trang {cur}/{total} tới máy in…")
+
     def _finish_convert(self):
         t, self.convert_thread = self.convert_thread, None
+        if t:
+            t.wait(3000)
+        self.btn_cancel.hide()
+        self.progress.hide()
+        self.lbl_progress.hide()
+        self.update_export_state()
+
+    def _finish_print(self):
+        t, self.print_thread = self.print_thread, None
         if t:
             t.wait(3000)
         self.btn_cancel.hide()
@@ -1849,11 +2154,14 @@ class MainWindow(QMainWindow):
         box.setText(f"Hoàn tất! Đã chuyển {n_pages} trang ({size_mb:.2f} MB).")
         box.setInformativeText(dst)
         b_open = box.addButton("Mở file", QMessageBox.AcceptRole)
+        b_print = box.addButton("In file…", QMessageBox.ActionRole)
         b_dir = box.addButton("Mở thư mục", QMessageBox.ActionRole)
         box.addButton("Đóng", QMessageBox.RejectRole)
         box.exec()
         if box.clickedButton() is b_open:
             QDesktopServices.openUrl(QUrl.fromLocalFile(dst))
+        elif box.clickedButton() is b_print:
+            self.print_pdf_file(dst)
         elif box.clickedButton() is b_dir:
             if sys.platform.startswith("win"):
                 subprocess.Popen(["explorer", "/select,", os.path.normpath(dst)])
@@ -1868,13 +2176,32 @@ class MainWindow(QMainWindow):
         self._finish_convert()
         self.lbl_export.setText("Đã hủy chuyển đổi. Không có file nào được tạo.")
 
+    def on_print_ok(self, n_pages, printer_name):
+        self._finish_print()
+        QMessageBox.information(self, APP_NAME, f"Đã gửi {n_pages} trang tới máy in '{printer_name}' thành công!")
+
+    def on_print_failed(self, msg):
+        self._finish_print()
+        QMessageBox.critical(self, APP_NAME, f"Lỗi trong quá trình in:\n{msg}")
+
+    def on_print_cancelled(self):
+        self._finish_print()
+        self.lbl_export.setText("Đã hủy lệnh in.")
+
     def closeEvent(self, e):
-        if self.convert_thread and self.convert_thread.isRunning():
-            if QMessageBox.question(self, APP_NAME, "Đang chuyển đổi. Thoát sẽ hủy tiến trình. Thoát?") != QMessageBox.Yes:
+        is_converting = self.convert_thread and self.convert_thread.isRunning()
+        is_printing = self.print_thread and self.print_thread.isRunning()
+        if is_converting or is_printing:
+            msg = "Đang chuyển đổi hoặc in ấn. Thoát sẽ hủy tiến trình. Thoát?"
+            if QMessageBox.question(self, APP_NAME, msg) != QMessageBox.Yes:
                 e.ignore()
                 return
-            self.convert_thread.cancel()
-            self.convert_thread.wait(8000)
+            if self.convert_thread:
+                self.convert_thread.cancel()
+                self.convert_thread.wait(5000)
+            if self.print_thread:
+                self.print_thread.cancel()
+                self.print_thread.wait(5000)
         self._stop_thumbs()
         self.persist_params()
         self.settings.setValue("geometry", self.saveGeometry())
