@@ -1,6 +1,6 @@
 {
- "version": "2.2.5",
- "url": "PDF_BW_Studio_2.2.5.bwpatch",
- "notes": "Gom cai dat (ten file xuat, giao dien) vao hop thoai Cai dat rieng; giao dien sidebar gon hon",
+ "version": "2.2.6",
+ "url": "PDF_BW_Studio_2.2.6.bwpatch",
+ "notes": "Cai dat app (giao dien, ten file) vao SettingsDialog; live preview doi theme ngay trong dialog; sidebar va header gon hon",
  "requires_api": 1
 }

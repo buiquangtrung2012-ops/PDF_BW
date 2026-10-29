@@ -1167,9 +1167,12 @@ class SettingsDialog(QDialog):
     def __init__(self, parent: "MainWindow"):
         super().__init__(parent)
         self.setWindowTitle("Cài đặt")
-        self.resize(460, 330)
+        self.resize(480, 340)
         self._parent = parent
+        # Kế thừa stylesheet từ MainWindow để đúng theme
+        self.setStyleSheet(parent.styleSheet())
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(18, 16, 18, 16)
         lay.setSpacing(14)
 
         # ---- Quy ước đặt tên file ----
@@ -1188,14 +1191,13 @@ class SettingsDialog(QDialog):
         self.ed_pat.setPlaceholderText("{name}_bw")
         gl.addWidget(self.ed_pat)
 
-        examples = QLabel("")
-        examples.setObjectName("subtitle")
-        gl.addWidget(examples)
-        self._examples_lbl = examples
+        self._examples_lbl = QLabel("")
+        self._examples_lbl.setObjectName("subtitle")
+        gl.addWidget(self._examples_lbl)
 
         def _update_example(text):
             sample = format_output_name(text or "{name}_bw", "TenFileMau", "binarize", 300)
-            examples.setText(f"Ví dụ kết quả: <b>{sample}.pdf</b>")
+            self._examples_lbl.setText(f"Ví dụ: <b>{sample}.pdf</b>")
         self.ed_pat.textChanged.connect(_update_example)
         _update_example(self.ed_pat.text())
 
@@ -1205,14 +1207,13 @@ class SettingsDialog(QDialog):
         grp_ui = self._group("🎨 Giao diện")
         ul = grp_ui.layout()
         theme_row = QHBoxLayout()
-        theme_row.setSpacing(10)
-        lbl_theme = QLabel("Chủ đề màu sắc:")
-        theme_row.addWidget(lbl_theme)
-        self.rb_dark = QPushButton("🌙 Tối (Dark)")
+        theme_row.setSpacing(8)
+        theme_row.addWidget(QLabel("Chủ đề:"))
+        self.rb_dark = QPushButton("🌙  Tối")
         self.rb_dark.setCheckable(True)
         self.rb_dark.setProperty("seg", True)
         self.rb_dark.setProperty("segpos", "first")
-        self.rb_light = QPushButton("☀ Sáng (Light)")
+        self.rb_light = QPushButton("☀  Sáng")
         self.rb_light.setCheckable(True)
         self.rb_light.setProperty("seg", True)
         self.rb_light.setProperty("segpos", "last")
@@ -1221,8 +1222,12 @@ class SettingsDialog(QDialog):
         grp_theme.addButton(self.rb_dark)
         grp_theme.addButton(self.rb_light)
         grp_theme.setExclusive(True)
-
         (self.rb_dark if parent.theme == "dark" else self.rb_light).setChecked(True)
+
+        # Live preview: đổi stylesheet dialog ngay khi bấm
+        self.rb_dark.toggled.connect(lambda on: self.setStyleSheet(build_qss(THEMES["dark"])) if on else None)
+        self.rb_light.toggled.connect(lambda on: self.setStyleSheet(build_qss(THEMES["light"])) if on else None)
+
         theme_row.addWidget(self.rb_dark)
         theme_row.addWidget(self.rb_light)
         theme_row.addStretch()
@@ -1250,7 +1255,6 @@ class SettingsDialog(QDialog):
         w.setObjectName("card")
         head = QLabel(title)
         head.setObjectName("sectionTitle")
-        head.setContentsMargins(0, 4, 0, 2)
         vl = QVBoxLayout(w)
         vl.setContentsMargins(12, 10, 12, 12)
         vl.setSpacing(8)
