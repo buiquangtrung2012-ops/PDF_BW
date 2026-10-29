@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton, QSlider, QCheckBox, QComboBox, QLineEdit,
     QScrollArea, QFrame, QStackedWidget, QSplitter, QProgressBar, QFileDialog, QMessageBox,
     QButtonGroup, QSizePolicy, QListWidget, QListWidgetItem, QListView,
-    QDialog, QPlainTextEdit, QInputDialog,
+    QDialog, QPlainTextEdit, QInputDialog, QGroupBox,
 )
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 import pymupdf as fitz
@@ -241,6 +241,10 @@ def build_qss(c: dict) -> str:
     QPushButton#secondary:hover {{ background: {c['btn_hover']}; border: 1.5px solid {c['accent']}; color: {c['accent']}; }}
     QPushButton#secondary:pressed {{ background: {c['btn_pressed']}; border: 1.5px solid {c['primary_border']}; }}
     QPushButton#secondary:disabled {{ background: {c['panel']}; color: {c['muted']}; border: 1px solid {c['border']}; }}
+    QPushButton#advToggle {{ text-align: left; background: {c['card']}; border: 1.5px solid {c['btn_border']};
+                            border-radius: 8px; padding: 9px 12px; font-weight: 700; color: {c['text']}; }}
+    QPushButton#advToggle:hover {{ background: {c['btn_hover']}; border: 1.5px solid {c['accent']}; color: {c['accent']}; }}
+    QPushButton#advToggle:checked {{ background: {c['card']}; border: 1.5px solid {c['accent']}; color: {c['accent']}; }}
     QPushButton#link {{ background: transparent; border: none; color: {c['accent']}; padding: 2px 4px; font-weight: 600; }}
     QPushButton#link:hover {{ color: #70a6ff; text-decoration: underline; }}
     QMenu {{ background: {c['panel']}; color: {c['text']}; border: 1px solid {c['btn_border']}; border-radius: 8px; padding: 5px; }}
@@ -267,6 +271,7 @@ def build_qss(c: dict) -> str:
     #viewerBar {{ background: {c['panel']}; border-bottom: 1px solid {c['border']}; }}
     #dropZone {{ border: 2px dashed {c['btn_border']}; border-radius: 16px; background: {c['panel']}; }}
     #footer {{ background: {c['panel']}; border-top: 1px solid {c['border']}; }}
+    QWidget#card {{ background: {c['card']}; border: 1.5px solid {c['border']}; border-radius: 10px; }}
     QListWidget {{ background: {c['panel']}; color: {c['text']}; border: none; border-right: 1px solid {c['border']}; outline: 0; }}
     QListWidget#fileList {{ background: {c['card']}; border: 1.5px solid {c['btn_border']}; border-radius: 8px; }}
     QListWidget::item {{ border-radius: 8px; color: {c['text']}; }}
@@ -1030,28 +1035,28 @@ class BatchDialog(QDialog):
         row.addStretch()
         lay.addLayout(row)
 
+        orow = QHBoxLayout()
         self.chk_same = QCheckBox("Lưu kết quả cạnh file gốc")
         self.chk_same.setChecked(True)
         self.chk_same.toggled.connect(self._toggle_out)
-        lay.addWidget(self.chk_same)
-        orow = QHBoxLayout()
+        orow.addWidget(self.chk_same)
+        orow.addStretch()
+        btn_cfg = QPushButton("⚙ Cài đặt…")
+        btn_cfg.setObjectName("link")
+        btn_cfg.setToolTip("Cài đặt quy ước đặt tên file và tùy chọn ứng dụng")
+        btn_cfg.clicked.connect(self.open_settings)
+        orow.addWidget(btn_cfg)
+        lay.addLayout(orow)
+
+        drow = QHBoxLayout()
         self.ed_out = QLineEdit()
         self.ed_out.setPlaceholderText("Thư mục lưu kết quả")
         self.btn_out = QPushButton("Chọn thư mục…")
         self.btn_out.clicked.connect(self.pick_out)
-        orow.addWidget(self.ed_out, 1)
-        orow.addWidget(self.btn_out)
-        lay.addLayout(orow)
+        drow.addWidget(self.ed_out, 1)
+        drow.addWidget(self.btn_out)
+        lay.addLayout(drow)
         self._toggle_out(True)
-
-        prow = QHBoxLayout()
-        prow.addWidget(QLabel("Quy ước đặt tên file:"))
-        initial_pat = self.parent().get_name_pattern() if hasattr(self.parent(), "get_name_pattern") else "{name}_bw"
-        self.ed_pattern = QLineEdit(initial_pat)
-        self.ed_pattern.setPlaceholderText("{name}_bw")
-        self.ed_pattern.setToolTip("Quy ước tên file xuất hàng loạt.\nBiến hỗ trợ: {name} (tên gốc), {mode} (chế độ: scan/gray/dither), {date} (ngày), {dpi} (DPI)")
-        prow.addWidget(self.ed_pattern, 1)
-        lay.addLayout(prow)
 
         self.progress = QProgressBar()
         self.progress.setRange(0, 1000)
@@ -1077,6 +1082,10 @@ class BatchDialog(QDialog):
     def _toggle_out(self, same):
         self.ed_out.setEnabled(not same)
         self.btn_out.setEnabled(not same)
+
+    def open_settings(self):
+        if hasattr(self.parent(), "open_settings"):
+            self.parent().open_settings()
 
     def add_files(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Chọn các file PDF", self.start_dir, "PDF (*.pdf)")
@@ -1107,9 +1116,7 @@ class BatchDialog(QDialog):
         if not same and not os.path.isdir(out_dir):
             QMessageBox.warning(self, APP_NAME, "Hãy chọn thư mục lưu kết quả hợp lệ.")
             return
-        pat = self.ed_pattern.text().strip() or "{name}_bw"
-        if hasattr(self.parent(), "set_name_pattern"):
-            self.parent().set_name_pattern(pat)
+        pat = self.parent().get_name_pattern() if hasattr(self.parent(), "get_name_pattern") else "{name}_bw"
         used, jobs = set(), []
         for i in range(n):
             src = self.list.item(i).data(Qt.UserRole)
@@ -1117,7 +1124,7 @@ class BatchDialog(QDialog):
             base = os.path.splitext(os.path.basename(src))[0]
             jobs.append((src, unique_path(folder, base, used, template=pat, mode=self.params.get("mode", ""), dpi=self.dpi)))
         self.n_jobs = n
-        for w in (self.btn_add, self.btn_rm, self.chk_same, self.ed_pattern, self.ed_out, self.btn_out, self.btn_start, self.list):
+        for w in (self.btn_add, self.btn_rm, self.chk_same, self.ed_out, self.btn_out, self.btn_start, self.list):
             w.setEnabled(False)
         self.btn_close.setText("Hủy")
         self.log.clear()
@@ -1149,6 +1156,116 @@ class BatchDialog(QDialog):
             self.lbl.setText("Đang hủy…")
             return
         super().reject()
+
+
+# ----------------------------------------------------------------------
+# Hộp thoại Cài đặt ứng dụng
+# ----------------------------------------------------------------------
+class SettingsDialog(QDialog):
+    """Gom các cài đặt ít dùng hàng ngày vào một chỗ để sidebar gọn hơn."""
+
+    def __init__(self, parent: "MainWindow"):
+        super().__init__(parent)
+        self.setWindowTitle("Cài đặt")
+        self.resize(460, 330)
+        self._parent = parent
+        lay = QVBoxLayout(self)
+        lay.setSpacing(14)
+
+        # ---- Quy ước đặt tên file ----
+        grp_name = self._group("📝 Quy ước đặt tên file xuất")
+        gl = grp_name.layout()
+
+        hint = QLabel(
+            "Biến hỗ trợ:  <b>{name}</b> — tên gốc,  <b>{mode}</b> — chế độ (scan/gray/dither),  "
+            "<b>{date}</b> — ngày (YYYYMMDD),  <b>{dpi}</b> — độ phân giải"
+        )
+        hint.setWordWrap(True)
+        hint.setObjectName("subtitle")
+        gl.addWidget(hint)
+
+        self.ed_pat = QLineEdit(parent.get_name_pattern())
+        self.ed_pat.setPlaceholderText("{name}_bw")
+        gl.addWidget(self.ed_pat)
+
+        examples = QLabel("")
+        examples.setObjectName("subtitle")
+        gl.addWidget(examples)
+        self._examples_lbl = examples
+
+        def _update_example(text):
+            sample = format_output_name(text or "{name}_bw", "TenFileMau", "binarize", 300)
+            examples.setText(f"Ví dụ kết quả: <b>{sample}.pdf</b>")
+        self.ed_pat.textChanged.connect(_update_example)
+        _update_example(self.ed_pat.text())
+
+        lay.addWidget(grp_name)
+
+        # ---- Giao diện ----
+        grp_ui = self._group("🎨 Giao diện")
+        ul = grp_ui.layout()
+        theme_row = QHBoxLayout()
+        theme_row.setSpacing(10)
+        lbl_theme = QLabel("Chủ đề màu sắc:")
+        theme_row.addWidget(lbl_theme)
+        self.rb_dark = QPushButton("🌙 Tối (Dark)")
+        self.rb_dark.setCheckable(True)
+        self.rb_dark.setProperty("seg", True)
+        self.rb_dark.setProperty("segpos", "first")
+        self.rb_light = QPushButton("☀ Sáng (Light)")
+        self.rb_light.setCheckable(True)
+        self.rb_light.setProperty("seg", True)
+        self.rb_light.setProperty("segpos", "last")
+
+        grp_theme = QButtonGroup(self)
+        grp_theme.addButton(self.rb_dark)
+        grp_theme.addButton(self.rb_light)
+        grp_theme.setExclusive(True)
+
+        (self.rb_dark if parent.theme == "dark" else self.rb_light).setChecked(True)
+        theme_row.addWidget(self.rb_dark)
+        theme_row.addWidget(self.rb_light)
+        theme_row.addStretch()
+        ul.addLayout(theme_row)
+        lay.addWidget(grp_ui)
+
+        lay.addStretch()
+
+        # ---- Nút OK / Hủy ----
+        brow = QHBoxLayout()
+        brow.addStretch()
+        ok_btn = QPushButton("Lưu cài đặt")
+        ok_btn.setObjectName("primary")
+        ok_btn.clicked.connect(self._save_and_close)
+        cancel_btn = QPushButton("Hủy")
+        cancel_btn.clicked.connect(self.reject)
+        brow.addWidget(ok_btn)
+        brow.addWidget(cancel_btn)
+        lay.addLayout(brow)
+
+    @staticmethod
+    def _group(title: str) -> QWidget:
+        """Nhóm có tiêu đề và khung viền nhẹ; style kế thừa từ QSS cha."""
+        w = QWidget()
+        w.setObjectName("card")
+        head = QLabel(title)
+        head.setObjectName("sectionTitle")
+        head.setContentsMargins(0, 4, 0, 2)
+        vl = QVBoxLayout(w)
+        vl.setContentsMargins(12, 10, 12, 12)
+        vl.setSpacing(8)
+        vl.addWidget(head)
+        return w
+
+    def _save_and_close(self):
+        pat = self.ed_pat.text().strip() or "{name}_bw"
+        self._parent.set_name_pattern(pat)
+        new_theme = "dark" if self.rb_dark.isChecked() else "light"
+        if new_theme != self._parent.theme:
+            self._parent.theme = new_theme
+            self._parent.settings.setValue("theme", new_theme)
+            self._parent.apply_theme()
+        self.accept()
 
 
 # ----------------------------------------------------------------------
@@ -1258,10 +1375,10 @@ class MainWindow(QMainWindow):
         b_batch = QPushButton("Xử lý hàng loạt…")
         b_batch.clicked.connect(self.open_batch)
         hl.addWidget(b_batch)
-        self.btn_theme = QPushButton("")
-        self.btn_theme.setToolTip("Chuyển giao diện Sáng / Tối")
-        self.btn_theme.clicked.connect(self.toggle_theme)
-        hl.addWidget(self.btn_theme)
+        btn_settings_hdr = QPushButton("⚙ Cài đặt")
+        btn_settings_hdr.setToolTip("Mở cài đặt ứng dụng (quy ước đặt tên, giao diện...)")
+        btn_settings_hdr.clicked.connect(self.open_settings)
+        hl.addWidget(btn_settings_hdr)
         self.updates = update_ui.UpdateController(self)
         hl.addWidget(self.updates.button)
         outer.addWidget(header)
@@ -1420,7 +1537,16 @@ class MainWindow(QMainWindow):
         pl = QVBoxLayout(panel)
         pl.setContentsMargins(16, 10, 16, 12)
         pl.setSpacing(6)
-        pl.addWidget(section_title("XUẤT FILE PDF"))
+        exp_head = QHBoxLayout()
+        exp_head.addWidget(section_title("XUẤT FILE PDF"))
+        exp_head.addStretch()
+        btn_settings = QPushButton("⚙ Cài đặt")
+        btn_settings.setObjectName("link")
+        btn_settings.setCursor(Qt.PointingHandCursor)
+        btn_settings.setToolTip("Cài đặt quy ước đặt tên file, giao diện và các tùy chọn khác")
+        btn_settings.clicked.connect(self.open_settings)
+        exp_head.addWidget(btn_settings)
+        pl.addLayout(exp_head)
         row = QHBoxLayout()
         col1 = QVBoxLayout()
         col1.setSpacing(2)
@@ -1445,18 +1571,6 @@ class MainWindow(QMainWindow):
         row.addLayout(col1, 1)
         row.addLayout(col2, 1)
         pl.addLayout(row)
-
-        nrow = QHBoxLayout()
-        nl = QVBoxLayout()
-        nl.setSpacing(2)
-        nl.addWidget(QLabel("Quy ước đặt tên file:"))
-        self.ed_name_pattern = QLineEdit(self.get_name_pattern())
-        self.ed_name_pattern.setPlaceholderText("{name}_bw")
-        self.ed_name_pattern.setToolTip("Quy ước đặt tên file xuất.\nBiến hỗ trợ: {name} (tên gốc), {mode} (chế độ: scan/gray/dither), {date} (ngày), {dpi} (DPI)")
-        self.ed_name_pattern.textChanged.connect(self.on_name_pattern_changed)
-        nl.addWidget(self.ed_name_pattern)
-        nrow.addLayout(nl)
-        pl.addLayout(nrow)
 
         self.lbl_export = QLabel("")
         self.lbl_export.setObjectName("subtitle")
@@ -1627,14 +1741,18 @@ class MainWindow(QMainWindow):
     def apply_theme(self):
         c = THEMES[self.theme]
         self.setStyleSheet(build_qss(c))
-        self.view.bg = QColor(c["view"])
-        self.view.update()
-        self.btn_theme.setText("Chế độ sáng" if self.theme == "dark" else "Chế độ tối")
+        if hasattr(self, "view"):
+            self.view.bg = QColor(c["view"])
+            self.view.update()
 
     def toggle_theme(self):
         self.theme = "light" if self.theme == "dark" else "dark"
         self.settings.setValue("theme", self.theme)
         self.apply_theme()
+
+    def open_settings(self):
+        dlg = SettingsDialog(self)
+        dlg.exec()
 
     # ---------------- Tham số ----------------
     def set_param(self, key, value):
@@ -1941,8 +2059,6 @@ class MainWindow(QMainWindow):
     def set_name_pattern(self, pattern: str):
         p = (pattern or "").strip() or "{name}_bw"
         self.settings.setValue("name_pattern", p)
-        if hasattr(self, "ed_name_pattern") and self.ed_name_pattern.text() != p:
-            self.ed_name_pattern.setText(p)
 
     def on_name_pattern_changed(self, text: str):
         p = text.strip() or "{name}_bw"

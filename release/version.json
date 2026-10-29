@@ -1,6 +1,6 @@
 {
- "version": "2.2.4",
- "url": "PDF_BW_Studio_2.2.4.bwpatch",
- "notes": "Them tinh nang in truc tiep PDF den trang va tuy chinh quy uoc dat ten file xuat (ca xu ly hang loat)",
+ "version": "2.2.5",
+ "url": "PDF_BW_Studio_2.2.5.bwpatch",
+ "notes": "Gom cai dat (ten file xuat, giao dien) vao hop thoai Cai dat rieng; giao dien sidebar gon hon",
  "requires_api": 1
 }
