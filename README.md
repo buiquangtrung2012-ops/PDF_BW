@@ -1,4 +1,4 @@
-# PDF Black & White Studio — Bản Desktop 2.2.7 (native)
+# PDF Black & White Studio — Bản Desktop 2.2.8 (native)
 
 Ứng dụng desktop thật (PySide6/Qt), **không Flask, không trình duyệt, không máy chủ web**, chạy 100% offline.
 

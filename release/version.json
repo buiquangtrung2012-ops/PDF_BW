@@ -1,6 +1,6 @@
 {
- "version": "2.2.7",
- "url": "PDF_BW_Studio_2.2.7.bwpatch",
- "notes": "Toi uu toc do xuat PDF (ket xuat Grayscale truc tiep, ma hoa PNG fast, da luong toi da 8 cores); khoa su kien lan chuot tren thanh truot de cuon trang khong bi nhay thong so",
+ "version": "2.2.8",
+ "url": "PDF_BW_Studio_2.2.8.bwpatch",
+ "notes": "Sua loi ValueError unpack 4 phan tu khi load preview mo file PDF",
  "requires_api": 1
 }

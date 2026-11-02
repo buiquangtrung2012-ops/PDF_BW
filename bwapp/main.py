@@ -2050,7 +2050,7 @@ class MainWindow(QMainWindow):
         if proc is None or req_id != self.req_id or page != self.page:
             return
         q_orig, q_proc = proc
-        _, wpt, hpt = entry
+        _, wpt, hpt = entry[:3]
         refit, self._refit = self._refit, False
         self.shown_dpi = dpi
         self.view.busy = False
