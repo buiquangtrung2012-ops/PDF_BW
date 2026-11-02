@@ -422,10 +422,14 @@ class PreviewTask(QRunnable):
             if self.req_id < sg.latest:                  # xong phần render nhưng đã lỗi thời: chỉ để lưu cache
                 sg.done.emit(self.sid, self.req_id, self.page, self.dpi, entry, None)
                 return
-            img, wpt, _ = entry
+            img, wpt, _ = entry[:3]
             proc = engine.process_image(img, self.params, engine.compute_scale(img.width, wpt))
-            # Chuyển đổi sang QImage ngay trong background thread để main thread vẽ tức thì
-            q_orig = pil_to_qimage(img)
+            # Cache q_orig để không phải tốn công chuyển đổi lại ảnh gốc mỗi khi kéo thanh trượt
+            if len(entry) >= 4 and entry[3] is not None:
+                q_orig = entry[3]
+            else:
+                q_orig = pil_to_qimage(img)
+                entry = (img, wpt, entry[2], q_orig)
             q_proc = pil_to_qimage(proc)
             sg.done.emit(self.sid, self.req_id, self.page, self.dpi, entry, (q_orig, q_proc))
         except SessionClosed:
@@ -607,7 +611,7 @@ class PrintThread(QThread):
                                 return
 
                         rect = doc[p_num - 1].rect
-                        img = engine.render_page_to_pil(doc, p_num, dpi=render_dpi)
+                        img = engine.render_page_to_pil(doc, p_num, dpi=render_dpi, to_gray=True)
                         if self.params is not None:
                             scale = engine.compute_scale(img.width, rect.width)
                             proc = engine.process_image(img, self.params, scale)
@@ -652,6 +656,18 @@ class PrintThread(QThread):
 # ----------------------------------------------------------------------
 # Widget nhỏ dùng lại
 # ----------------------------------------------------------------------
+class NoWheelSlider(QSlider):
+    """QSlider không nhận sự kiện con lăn chuột để tránh vô tình đổi giá trị khi cuộn trang."""
+    def wheelEvent(self, e):
+        e.ignore()
+
+
+class NoWheelComboBox(QComboBox):
+    """QComboBox không nhận sự kiện con lăn chuột khi chưa mở, tránh vô tình đổi lựa chọn khi cuộn trang."""
+    def wheelEvent(self, e):
+        e.ignore()
+
+
 class LabeledSlider(QWidget):
     changed = Signal(int)
     drag_state = Signal(bool)
@@ -669,7 +685,7 @@ class LabeledSlider(QWidget):
         self.badge.setObjectName("valBadge")
         top.addWidget(self.badge)
         lay.addLayout(top)
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = NoWheelSlider(Qt.Horizontal)
         self.slider.setRange(lo, hi)
         self.slider.setValue(val)
         self.slider.valueChanged.connect(self._on_change)
@@ -1433,7 +1449,7 @@ class MainWindow(QMainWindow):
         lay.addLayout(grid)
 
         urow = QHBoxLayout()
-        self.cb_user = QComboBox()
+        self.cb_user = NoWheelComboBox()
         self.cb_user.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.cb_user.currentIndexChanged.connect(self.on_user_preset_selected)
         b_save = QPushButton("Lưu…")
@@ -1562,7 +1578,7 @@ class MainWindow(QMainWindow):
         col2 = QVBoxLayout()
         col2.setSpacing(2)
         col2.addWidget(QLabel("Độ nét (DPI):"))
-        self.cb_dpi = QComboBox()
+        self.cb_dpi = NoWheelComboBox()
         self.cb_dpi.addItem("150 DPI - Siêu nhẹ", 150)
         self.cb_dpi.addItem("200 DPI - Chuẩn văn phòng", 200)
         self.cb_dpi.addItem("300 DPI - In ấn", 300)
