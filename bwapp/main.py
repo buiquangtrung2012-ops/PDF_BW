@@ -1466,9 +1466,9 @@ class MainWindow(QMainWindow):
         lay.addWidget(section_title("CHẾ ĐỘ CHUYỂN ĐỔI"))
         self.mode_btns = {}
         for mode, text in [
-            ("binarize", "Đen trắng tài liệu (Scan)\nNét chữ sắc gọn, nền trắng tinh"),
-            ("grayscale", "Thang độ xám (Grayscale)\nGiữ sắc độ ảnh và đồ họa"),
-            ("dither", "Bán sắc giữ chi tiết (Dithering)\nTối ưu cho ảnh chụp và đồ họa màu"),
+            ("binarize", "Đen trắng tài liệu (Scan)\nNét chữ sắc gọn, nền trắng tinh (file siêu nhẹ)"),
+            ("grayscale", "Thang độ xám (Grayscale)\nGiữ sắc độ ảnh và đồ họa (file nặng hơn)"),
+            ("dither", "Bán sắc giữ chi tiết (Dithering)\nTối ưu cho ảnh chụp và đồ họa màu (file nhẹ)"),
         ]:
             b = QPushButton(text.replace("&", "&&"))
             b.setCheckable(True)
@@ -1579,14 +1579,14 @@ class MainWindow(QMainWindow):
         col2.setSpacing(2)
         col2.addWidget(QLabel("Độ nét (DPI):"))
         self.cb_dpi = NoWheelComboBox()
-        self.cb_dpi.addItem("150 DPI - Siêu nhẹ", 150)
-        self.cb_dpi.addItem("200 DPI - Chuẩn văn phòng", 200)
-        self.cb_dpi.addItem("300 DPI - In ấn", 300)
+        self.cb_dpi.addItem("150 DPI - Siêu nhẹ (Xem nhanh)", 150)
+        self.cb_dpi.addItem("200 DPI - Chuẩn quét gốc (Khuyên dùng)", 200)
+        self.cb_dpi.addItem("300 DPI - Bản in sắc nét (File nặng hơn)", 300)
         try:
             self.cb_dpi.setCurrentIndex(max(0, min(2, int(self.settings.value("dpi_idx", 1)))))
         except (TypeError, ValueError):
             self.cb_dpi.setCurrentIndex(1)
-        self.cb_dpi.currentIndexChanged.connect(lambda i: self.settings.setValue("dpi_idx", i))
+        self.cb_dpi.currentIndexChanged.connect(lambda i: (self.settings.setValue("dpi_idx", i), self.update_export_state()))
         col2.addWidget(self.cb_dpi)
         row.addLayout(col1, 1)
         row.addLayout(col2, 1)
@@ -1788,6 +1788,7 @@ class MainWindow(QMainWindow):
         self.params["mode"] = mode
         self.sync_mode_ui()
         self.after_params_changed()
+        self.update_export_state()
 
     def sync_mode_ui(self):
         mode = self.params["mode"]
@@ -2097,8 +2098,13 @@ class MainWindow(QMainWindow):
         self.lbl_export.setStyleSheet("")      # buộc áp lại style theo objectName mới
         self.lbl_export.style().unpolish(self.lbl_export)
         self.lbl_export.style().polish(self.lbl_export)
-        self.lbl_export.setText(f"Sẽ xuất / in {len(pages)} / {self.total_pages} trang" if ok
-                                else "Dải trang không hợp lệ. Ví dụ: all hoặc 1-3, 5, 8-10")
+        if ok:
+            msg = f"Sẽ xuất / in {len(pages)} / {self.total_pages} trang"
+            if self.params.get("mode") == "grayscale" and self.cb_dpi.currentData() == 300:
+                msg += " • Lưu ý: Thang xám ở 300 DPI file sẽ nặng (nên dùng Đen trắng hoặc 200 DPI)"
+            self.lbl_export.setText(msg)
+        else:
+            self.lbl_export.setText("Dải trang không hợp lệ. Ví dụ: all hoặc 1-3, 5, 8-10")
         is_idle = (self.convert_thread is None and self.print_thread is None)
         self.btn_convert.setEnabled(ok and is_idle)
         self.btn_print.setEnabled(ok and is_idle)

@@ -1,6 +1,6 @@
 {
- "version": "2.2.8",
- "url": "PDF_BW_Studio_2.2.8.bwpatch",
- "notes": "Sua loi ValueError unpack 4 phan tu khi load preview mo file PDF",
+ "version": "2.2.9",
+ "url": "PDF_BW_Studio_2.2.9.bwpatch",
+ "notes": "Giai thich va toi uu dung luong xuat file (Grayscale chat luong cao Q76 optimize, goi y DPI chuan 200, huong dan chon Den trang tai lieu de file sieu nhe)",
  "requires_api": 1
 }

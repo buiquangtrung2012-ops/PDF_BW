@@ -290,7 +290,8 @@ def _encode_page(proc_img: Image.Image, mode: str) -> bytes:
     if mode in ("binarize", "dither"):
         proc_img.convert("1").save(buf, format="PNG", optimize=False, compress_level=1)
     else:
-        proc_img.save(buf, format="JPEG", quality=88, optimize=False)
+        # Grayscale: quality=76 + optimize=True giảm 30-40% dung lượng so với quality 88 mà nét chữ vẫn sắc mịn
+        proc_img.save(buf, format="JPEG", quality=76, optimize=True)
     return buf.getvalue()
 
 
